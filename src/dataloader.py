@@ -29,9 +29,11 @@ class SEMINoAugDataset(Dataset):
     def __getitem__(self, idx):
         return self.sents[idx], self.labels[idx]
 
+
 class MyCollator(object):
-    def __init__(self, tokenizer):
+    def __init__(self, tokenizer, max_length=255):
         self.tokenizer = tokenizer
+        self.max_length = max_length
 
     def __call__(self, batch):
         sents, sents_aug1, sents_aug2 = [], [], []
@@ -48,26 +50,26 @@ class MyCollator(object):
                 sents_aug2.append(sample[2])
                 labels.append(sample[3])
     
-        tokenized = self.tokenizer(sents, padding=True, truncation='longest_first', max_length=255, return_tensors='pt')
+        tokenized = self.tokenizer(sents, padding=True, truncation='longest_first', max_length=self.max_length, return_tensors='pt')
         labels = torch.LongTensor(labels) - 1
         if sents_aug1 is not None:
-            tokenized_aug1 = self.tokenizer(sents_aug1, padding=True, truncation='longest_first', max_length=255, return_tensors='pt')
+            tokenized_aug1 = self.tokenizer(sents_aug1, padding=True, truncation='longest_first', max_length=self.max_length, return_tensors='pt')
         else:
             tokenized_aug1 = None
         if sents_aug2 is not None: 
-            tokenized_aug2 = self.tokenizer(sents_aug2, padding=True, truncation='longest_first', max_length=255, return_tensors='pt')
+            tokenized_aug2 = self.tokenizer(sents_aug2, padding=True, truncation='longest_first', max_length=self.max_length, return_tensors='pt')
         else:
             tokenized_aug2 = None
         return tokenized, tokenized_aug1, tokenized_aug2, labels
 
 
-def get_dataloader(data_path, labeled_size=200, mu=4, batch_size=32, load_mode='semi'):
+def get_dataloader(data_path, labeled_size=200, mu=4, batch_size=32, max_length=255, load_mode='semi'):
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    
+    collator = MyCollator(tokenizer, max_length=max_length)
+
     train_l_df = pd.read_csv(os.path.join(data_path,'train_{}.csv'.format(labeled_size)))
     dev_df = pd.read_csv(os.path.join(data_path,'dev.csv'))
     test_df = pd.read_csv(os.path.join(data_path,'test.csv'))
-    
     
     if load_mode == 'semi':
         train_u_df = pd.read_csv(os.path.join(data_path,'unlabeled_data.csv'))
@@ -79,7 +81,7 @@ def get_dataloader(data_path, labeled_size=200, mu=4, batch_size=32, load_mode='
         else:
             train_dataset_l = SEMIDataset(train_l_df['content'].to_list(), train_l_df['synonym_aug'].to_list(), train_l_df['back_translation'], labels=train_l_df['label'].to_list())
             train_dataset_u = SEMIDataset(train_u_df['content'].to_list(), train_u_df['synonym_aug'].to_list(), train_u_df['back_translation'], labels=train_u_df['label'].to_list())
-        train_loader_u = DataLoader(dataset=train_dataset_u, batch_size=batch_size, shuffle=True, collate_fn=MyCollator(tokenizer))
+        train_loader_u = DataLoader(dataset=train_dataset_u, batch_size=batch_size, shuffle=True, collate_fn=collator)
     
     elif load_mode == 'baseline':
         train_dataset_l = SEMINoAugDataset(train_l_df['content'].to_list(), train_l_df['label'].to_list())
@@ -88,10 +90,10 @@ def get_dataloader(data_path, labeled_size=200, mu=4, batch_size=32, load_mode='
     dev_dataset = SEMINoAugDataset(dev_df['content'].to_list(), labels=dev_df['label'].to_list())
     test_dataset = SEMINoAugDataset(test_df['content'].to_list(), labels=test_df['label'].to_list())
 
-    train_loader_l = DataLoader(dataset=train_dataset_l, batch_size=batch_size, shuffle=True, collate_fn=MyCollator(tokenizer))
+    train_loader_l = DataLoader(dataset=train_dataset_l, batch_size=batch_size, shuffle=True, collate_fn=collator)
     
-    dev_loader = DataLoader(dataset=dev_dataset, batch_size=64, shuffle=False, collate_fn=MyCollator(tokenizer))
-    test_loader = DataLoader(dataset=test_dataset, batch_size=64, shuffle=False, collate_fn=MyCollator(tokenizer))
+    dev_loader = DataLoader(dataset=dev_dataset, batch_size=64, shuffle=False, collate_fn=collator)
+    test_loader = DataLoader(dataset=test_dataset, batch_size=64, shuffle=False, collate_fn=collator)
     
     num_class = max(train_l_df['label'].to_list())
     return train_loader_l, train_loader_u, dev_loader, test_loader, num_class
