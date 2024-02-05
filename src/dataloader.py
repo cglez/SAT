@@ -1,5 +1,6 @@
 import sys
 
+import numpy as np
 import pandas as pd
 import os
 import torch
@@ -70,6 +71,8 @@ def get_dataloader(data_path, labeled_size=200, mu=4, batch_size=32, max_length=
     collator = MyCollator(tokenizer, max_length=max_length)
 
     pool_df = pd.read_csv(os.path.join(data_path, 'train.csv'))
+    _, pool_labels = np.unique(pool_df['label'], return_inverse=True)
+    pool_df['label'] = pool_labels
     random_permutation = torch.randperm(len(pool_df))
 
     labeled_ids = random_permutation[:labeled_size]
@@ -82,10 +85,12 @@ def get_dataloader(data_path, labeled_size=200, mu=4, batch_size=32, max_length=
     train_u_df = pool_df.iloc[unlabeled_ids]
 
     test_df = pd.read_csv(os.path.join(data_path,'test.csv'))
+    _, test_labels = np.unique(test_df['label'], return_inverse=True)
+    test_df['label'] = test_labels
     
     if load_mode == 'semi':
-        train_dataset_l = SEMIDataset(train_l_df['text'].to_list(), train_l_df['text'].to_list(), train_l_df['text'], labels=train_l_df['label'].to_list())
-        train_dataset_u = SEMIDataset(train_u_df['text'].to_list(), train_u_df['text'].to_list(), train_u_df['text'], labels=train_u_df['label'].to_list())
+        train_dataset_l = SEMIDataset(train_l_df['text'].to_list(), train_l_df['text'].to_list(), train_l_df['text'].to_list(), labels=train_l_df['label'].to_list())
+        train_dataset_u = SEMIDataset(train_u_df['text'].to_list(), train_u_df['text'].to_list(), train_u_df['text'].to_list(), labels=train_u_df['label'].to_list())
         train_loader_u = DataLoader(dataset=train_dataset_u, batch_size=batch_size, shuffle=True, collate_fn=collator)
     elif load_mode == 'baseline':
         train_dataset_l = SEMINoAugDataset(train_l_df['text'].to_list(), train_l_df['label'].to_list())
