@@ -1,3 +1,5 @@
+import sys
+
 import pandas as pd
 import os
 import torch
@@ -67,28 +69,34 @@ def get_dataloader(data_path, labeled_size=200, mu=4, batch_size=32, max_length=
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     collator = MyCollator(tokenizer, max_length=max_length)
 
-    train_l_df = pd.read_csv(os.path.join(data_path,'train_{}.csv'.format(labeled_size)))
-    dev_df = pd.read_csv(os.path.join(data_path,'dev.csv'))
+    pool_df = pd.read_csv(os.path.join(data_path, 'train.csv'))
+    available_ids = torch.arange(len(pool_df))
+
+    labeled_ids = torch.multinomial(available_ids, labeled_size, replacement=False)
+    split_point = int(0.8 * labeled_size)
+    train_ids, dev_ids = torch.split(labeled_ids, [split_point, labeled_size - split_point])
+    train_l_df = pool_df[train_ids]
+    dev_df = pool_df[dev_ids]
+
+    unlabeled_mask = torch.ones(len(pool_df), dtype=torch.bool)
+    unlabeled_mask[labeled_ids] = 0
+    train_u_df = pool_df[unlabeled_mask]
+
     test_df = pd.read_csv(os.path.join(data_path,'test.csv'))
     
     if load_mode == 'semi':
-        train_u_df = pd.read_csv(os.path.join(data_path,'unlabeled_data.csv'))
-        if 'yahoo' in data_path:
-            bt_l_df = pd.read_csv(os.path.join(data_path, 'bt_{}.csv'.format(labeled_size)))
-            bt_u_df = pd.read_csv(os.path.join(data_path, 'bt_unlabeled.csv'.format(labeled_size)))
-            train_dataset_l = SEMIDataset(train_l_df['content'].to_list(), train_l_df['synonym_aug'].to_list(), bt_l_df['back_translation'], labels=train_l_df['label'].to_list())
-            train_dataset_u = SEMIDataset(train_u_df['content'].to_list(), train_u_df['synonym_aug'].to_list(), bt_u_df['back_translation'], labels=train_u_df['label'].to_list())
-        else:
-            train_dataset_l = SEMIDataset(train_l_df['content'].to_list(), train_l_df['synonym_aug'].to_list(), train_l_df['back_translation'], labels=train_l_df['label'].to_list())
-            train_dataset_u = SEMIDataset(train_u_df['content'].to_list(), train_u_df['synonym_aug'].to_list(), train_u_df['back_translation'], labels=train_u_df['label'].to_list())
+        train_dataset_l = SEMIDataset(train_l_df['text'].to_list(), train_l_df['text'].to_list(), train_l_df['text'], labels=train_l_df['label'].to_list())
+        train_dataset_u = SEMIDataset(train_u_df['text'].to_list(), train_u_df['text'].to_list(), train_u_df['text'], labels=train_u_df['label'].to_list())
         train_loader_u = DataLoader(dataset=train_dataset_u, batch_size=batch_size, shuffle=True, collate_fn=collator)
-    
     elif load_mode == 'baseline':
-        train_dataset_l = SEMINoAugDataset(train_l_df['content'].to_list(), train_l_df['label'].to_list())
+        train_dataset_l = SEMINoAugDataset(train_l_df['text'].to_list(), train_l_df['label'].to_list())
         train_loader_u = None
         
-    dev_dataset = SEMINoAugDataset(dev_df['content'].to_list(), labels=dev_df['label'].to_list())
-    test_dataset = SEMINoAugDataset(test_df['content'].to_list(), labels=test_df['label'].to_list())
+    dev_dataset = SEMINoAugDataset(dev_df['text'].to_list(), labels=dev_df['label'].to_list())
+    test_dataset = SEMINoAugDataset(test_df['text'].to_list(), labels=test_df['label'].to_list())
+    print(data_path, ', #Train: ', len(train_dataset_l), ', #Dev: ', len(dev_dataset), ', #Unlab.: ',
+          len(train_dataset_u) if train_dataset_u is not None else 0, ', #Test: ', len(test_dataset),
+          sep='', file=sys.stderr)
 
     train_loader_l = DataLoader(dataset=train_dataset_l, batch_size=batch_size, shuffle=True, collate_fn=collator)
     

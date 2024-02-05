@@ -28,7 +28,7 @@ def main():
     
     # task
     parser.add_argument('--task', type=str, default='semi')
-    parser.add_argument('--aug_metric', type=str, default='base', choices=['base', 'sim'])
+    parser.add_argument('--aug_metric', type=str, default='sim', choices=['base', 'sim'])
     parser.add_argument('--seed', type=int, default=2022)
 
     # customize the trainer
@@ -50,7 +50,7 @@ def main():
     config = parser.parse_args()
     
     train_loader_l, train_loader_u, dev_loader, test_loader, num_class = get_dataloader(
-        data_path=os.path.join('../data', config.dataset),
+        data_path=os.path.join('data', config.dataset),
         labeled_size=config.num_labeled,
         mu=config.mu,
         batch_size=config.batch_size,
