@@ -33,6 +33,7 @@ def main():
 
     # customize the trainer
     parser.add_argument('--num_epoch', type=int, default=20, help='num epoches to train')
+    parser.add_argument('--batch_size', type=int, default=32, help='trainer batch size')
     parser.add_argument('--warmup_epoch', type=int, default=0, help='num epoches to train')
     parser.add_argument('--optimizer', type=str, default='AdamW', help='the optimizer chosen to train the model')
     parser.add_argument('--thr', type=float, default=0.9, help='the threshold chosen to filter "truths" of low probabilities')
@@ -47,7 +48,13 @@ def main():
     
     config = parser.parse_args()
     
-    train_loader_l, train_loader_u, dev_loader, test_loader, num_class = get_dataloader(os.path.join('../data', config.dataset), config.num_labeled, config.mu, config.task)
+    train_loader_l, train_loader_u, dev_loader, test_loader, num_class = get_dataloader(
+        data_path=os.path.join('../data', config.dataset),
+        labeled_size=config.num_labeled,
+        mu=config.mu,
+        batch_size=config.batch_size,
+        load_mode=config.task
+    )
     loaders = {
         'train_loader_l': train_loader_l,
         'train_loader_u': None if config.task == 'baseline' else train_loader_u,

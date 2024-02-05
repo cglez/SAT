@@ -60,7 +60,8 @@ class MyCollator(object):
             tokenized_aug2 = None
         return tokenized, tokenized_aug1, tokenized_aug2, labels
 
-def get_dataloader(data_path, labeled_size=200, mu=4, load_mode='semi'):
+
+def get_dataloader(data_path, labeled_size=200, mu=4, batch_size=32, load_mode='semi'):
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     
     train_l_df = pd.read_csv(os.path.join(data_path,'train_{}.csv'.format(labeled_size)))
@@ -78,7 +79,7 @@ def get_dataloader(data_path, labeled_size=200, mu=4, load_mode='semi'):
         else:
             train_dataset_l = SEMIDataset(train_l_df['content'].to_list(), train_l_df['synonym_aug'].to_list(), train_l_df['back_translation'], labels=train_l_df['label'].to_list())
             train_dataset_u = SEMIDataset(train_u_df['content'].to_list(), train_u_df['synonym_aug'].to_list(), train_u_df['back_translation'], labels=train_u_df['label'].to_list())
-        train_loader_u = DataLoader(dataset=train_dataset_u, batch_size=32, shuffle=True, collate_fn=MyCollator(tokenizer))
+        train_loader_u = DataLoader(dataset=train_dataset_u, batch_size=batch_size, shuffle=True, collate_fn=MyCollator(tokenizer))
     
     elif load_mode == 'baseline':
         train_dataset_l = SEMINoAugDataset(train_l_df['content'].to_list(), train_l_df['label'].to_list())
@@ -87,7 +88,7 @@ def get_dataloader(data_path, labeled_size=200, mu=4, load_mode='semi'):
     dev_dataset = SEMINoAugDataset(dev_df['content'].to_list(), labels=dev_df['label'].to_list())
     test_dataset = SEMINoAugDataset(test_df['content'].to_list(), labels=test_df['label'].to_list())
 
-    train_loader_l = DataLoader(dataset=train_dataset_l, batch_size=32, shuffle=True, collate_fn=MyCollator(tokenizer))
+    train_loader_l = DataLoader(dataset=train_dataset_l, batch_size=batch_size, shuffle=True, collate_fn=MyCollator(tokenizer))
     
     dev_loader = DataLoader(dataset=dev_dataset, batch_size=64, shuffle=False, collate_fn=MyCollator(tokenizer))
     test_loader = DataLoader(dataset=test_dataset, batch_size=64, shuffle=False, collate_fn=MyCollator(tokenizer))
