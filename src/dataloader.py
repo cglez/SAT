@@ -70,17 +70,16 @@ def get_dataloader(data_path, labeled_size=200, mu=4, batch_size=32, max_length=
     collator = MyCollator(tokenizer, max_length=max_length)
 
     pool_df = pd.read_csv(os.path.join(data_path, 'train.csv'))
-    available_ids = torch.arange(len(pool_df))
+    random_permutation = torch.randperm(len(pool_df))
 
-    labeled_ids = torch.multinomial(available_ids, labeled_size, replacement=False)
+    labeled_ids = random_permutation[:labeled_size]
     split_point = int(0.8 * labeled_size)
     train_ids, dev_ids = torch.split(labeled_ids, [split_point, labeled_size - split_point])
-    train_l_df = pool_df[train_ids]
-    dev_df = pool_df[dev_ids]
+    train_l_df = pool_df.iloc[train_ids]
+    dev_df = pool_df.iloc[dev_ids]
 
-    unlabeled_mask = torch.ones(len(pool_df), dtype=torch.bool)
-    unlabeled_mask[labeled_ids] = 0
-    train_u_df = pool_df[unlabeled_mask]
+    unlabeled_ids = random_permutation[labeled_size:]
+    train_u_df = pool_df.iloc[unlabeled_ids]
 
     test_df = pd.read_csv(os.path.join(data_path,'test.csv'))
     
