@@ -35,11 +35,7 @@ class TextClassifierNoAux(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.bert_model = BertModel.from_pretrained('bert-base-uncased')
-        self.main_linear = nn.Sequential(
-            nn.Linear(self.bert_model.config.hidden_size, config.hidden_size),
-            nn.Tanh(),
-            nn.Linear(config.hidden_size, config.num_classes)
-        )
+        self.main_linear = nn.Linear(self.bert_model.config.hidden_size, config.num_classes)
 
     def forward(self, inputs, return_hidden=False):
         outputs = self.bert_model(**inputs)

@@ -43,7 +43,7 @@ def main():
     parser.add_argument('--aux_metric', type=str, default='CE', help='the metric for strength comparison of two augmentation predictions (default: cross entropy)')
     parser.add_argument('--method', type=str, default='aaa', help='the metric for strength comparison of two augmentation predictions (default: cross entropy)')
     parser.add_argument('--lr_main', type=float, default=1e-3, help='learning rate for the main task')
-    parser.add_argument('--lr_bert', type=float, default=1e-5, help='learning rate for the bert model')
+    parser.add_argument('--lr_bert', type=float, default=5e-5, help='learning rate for the bert model')
     parser.add_argument('--lr_aux', type=float, default=1e-4, help='learning rate for the auxiliary task')
     
     config = parser.parse_args()
