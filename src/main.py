@@ -28,6 +28,7 @@ def main():
     
     # task
     parser.add_argument('--task', type=str, default='semi')
+    parser.add_argument('--metric', type=str, default='acc', choices=['acc', 'auc_1'])
     parser.add_argument('--aug_metric', type=str, default='sim', choices=['base', 'sim'])
     parser.add_argument('--seed', type=int, default=2022)
 

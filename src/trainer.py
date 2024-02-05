@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from model import TextClassifier, EmbeddingScorer, TextClassifierNoAux, Classifier
 from utils import compare_and_gen_augchoicemask, move_to_cuda, AverageMeter
 from tqdm import tqdm
-from sklearn.metrics import f1_score, accuracy_score
+from sklearn.metrics import f1_score, accuracy_score, precision_recall_curve, auc
 import numpy as np
 import logging
 
@@ -505,7 +505,7 @@ class SimTrainer(BaseTrainer):
                 pbar.set_description('Training epoch {:2d}: Loss = {:.4f}'.format(epoch+1, self.losses.val))
 
     def evaluate(self, loader, epoch=1, stage='val'):
-        all_preds, all_labels = [], []
+        all_preds, all_labels, all_probs = [], [], []
         self.losses.reset()
         
         with tqdm(loader) as pbar:
@@ -515,43 +515,57 @@ class SimTrainer(BaseTrainer):
 
                 with torch.no_grad():
                     preds, _ = self._model(sents)
+                    all_probs.append(torch.softmax(preds, dim=1))
                     all_preds.append(preds.argmax(-1))
                     all_labels.append(labels)
                 pbar.set_description('{}ing'.format('validat' if stage=='val' else 'test'))
         
         all_preds = torch.cat(all_preds).detach().cpu().numpy()
         all_labels = torch.cat(all_labels).detach().cpu().numpy()
-        f1_eval = f1_score(all_labels, all_preds, average='macro')
+        all_probs = torch.cat(all_probs).detach().cpu().numpy()
+        f1_macro = f1_score(all_labels, all_preds, average='macro')
         acc = accuracy_score(all_labels, all_preds)
-        return f1_eval, acc    
+        precisions_1, recalls_1, _ = precision_recall_curve(y_true=all_labels, probas_pred=all_probs[:, 1], pos_label=1)
+        auc_1 = auc(recalls_1, precisions_1)
+        return f1_macro, acc, auc_1
   
     def run(self):
-        best_test_f1 = 0.0
-        best_test_acc = 0.0
-        best_dev_f1 = 0.0
+        test_scores = {'acc': [], 'f1_macro': [], 'auc_1': []}
+        best_dev_score = 0.0
         patience = self.patience
         for epoch in range(self.num_epoch):
             # train
             self.train(self.loaders['train_loader_l'], self.loaders['train_loader_u'], epoch)
             # eval
-            f1_macro, f1_micro = self.evaluate(self.loaders['dev_loader'], epoch)
-            self.logger.info('********Dev results: Acc (MI-F1)={}*********'.format(f1_micro))
-            if f1_micro > best_dev_f1:
+            f1_macro, acc, auc_1 = self.evaluate(self.loaders['dev_loader'], epoch)
+            if self.config.metric == 'auc_1':
+                dev_score = auc_1
+            else:
+                dev_score = acc
+            self.logger.info(f'********Dev results: Acc={acc}, macro-F1={f1_macro}, AUC_1={auc_1}*********')
+            if dev_score > best_dev_score:
                 patience = self.patience
+                best_dev_score = dev_score
                 self.logger.info('find new best model!')
-                best_dev_f1 = f1_micro
-                f1_macro, f1_micro = self.evaluate(self.loaders['test_loader'], epoch, stage='test')
-                self.logger.info('********Test results: Acc (MI-F1)={}, F1 (MA)={}***********'.format(f1_micro, f1_macro))
-                if f1_micro > best_test_acc:
-                    best_test_acc = f1_micro
-                    best_test_f1 = f1_macro
+                f1_macro, acc, auc_1 = self.evaluate(self.loaders['test_loader'], epoch, stage='test')
+                self.logger.info(f'********Test results: Acc={acc}, macro-F1={f1_macro}, AUC_1={auc_1}***********')
+                test_scores['acc'].append(acc)
+                test_scores['f1_macro'].append(f1_macro)
+                test_scores['auc_1'].append(auc_1)
             else:
                 patience -= 1
                 if patience == 0 or epoch == self.config.num_epoch - 1:
-                    self.logger.info('No patience, best f1 is {}'.format(best_test_f1))
+                    self.logger.info('No patience.')
                     break
-        self.logger.info('NUM_LABELD={}: aug={}, lr={}, lr_bert={}, thr={}, lbd={}, mu={}: best_acc={}, best_MAF1={}\n'.format(self.config.num_labeled, self.config.aug_metric, self.config.lr_main, self.config.lr_bert, self.config.thr, self.config.lbd, self.config.mu, best_test_acc, best_test_f1))
-        f = open('results_{}.txt'.format(self.config.dataset), 'a')
-        f.write('NUM_LABELD={}: aug={}, lr={}, lr_bert={}, thr={}, lbd={}, mu={}: best_acc={}, best_MAF1={}\n'.format(self.config.num_labeled, self.config.aug_metric, self.config.lr_main, self.config.lr_bert, self.config.thr, self.config.lbd, self.config.mu, best_test_acc, best_test_f1))
-        f.close()
-        exit()
+        self.logger.info(
+            f'NUM_LABELED={self.config.num_labeled}, SEED={self.config.seed}: aug={self.config.aug_metric},'
+            f' lr={self.config.lr_main}, lr_bert={self.config.lr_bert}, thr={self.config.thr}, lbd={self.config.lbd},'
+            f' mu={self.config.mu}:\n' + test_scores.__str__()
+        )
+        with open(f'output/results_{self.config.dataset}.txt', 'a') as f:
+            f.write(
+                f'NUM_LABELED={self.config.num_labeled} SEED={self.config.seed}: aug={self.config.aug_metric},'
+                f' lr={self.config.lr_main}, lr_bert={self.config.lr_bert}, thr={self.config.thr},'
+                f' lbd={self.config.lbd}, mu={self.config.mu}: acc={test_scores["acc"][-1]},'
+                f' macro_f1={test_scores["f1_macro"][-1]}, auc_1={test_scores["auc_1"][-1]}\n'
+            )
