@@ -15,7 +15,7 @@ def compare_and_gen_augchoicemask(preds1, preds2, label, metric='CE'):
 
 def move_to_cuda(dict_inputs: dict):
     for k, v in dict_inputs.items():
-        dict_inputs[k] = v.cuda()
+        dict_inputs[k] = v.to('cuda' if torch.cuda.is_available() else 'cpu')
     
     return dict_inputs
 

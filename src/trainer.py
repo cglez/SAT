@@ -62,14 +62,14 @@ class BaseTrainer():
             for batch_label in pbar:
                 sents_l, sents_l_aug1, sents_l_aug2, labels = batch_label
                 sents_l, sents_l_aug1, sents_l_aug2 = map(move_to_cuda, [sents_l, sents_l_aug1, sents_l_aug2])
-                labels = labels.cuda()
+                labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
 
                 if self.config.dataset == 'imdb':
                     labels = labels + 1
                 # step1: run and compare the outputs from two augmentations of the same labeled input
                 preds1 = self._model(sents_l_aug1)  # (n, c)
                 preds2 = self._model(sents_l_aug2)  # (n, c)
-                aug_choice = compare_and_gen_augchoicemask(preds1, preds2, labels, metric=self.config.aux_metric).cuda()
+                aug_choice = compare_and_gen_augchoicemask(preds1, preds2, labels, metric=self.config.aux_metric).to('cuda' if torch.cuda.is_available() else 'cpu')
                 
                 # step2: tune the auxiliary network using labeled inputs
                 raw_preds, aug_preds = self._model(sents_l, 'both')
@@ -98,7 +98,7 @@ class BaseTrainer():
                         sents_u, sents_u_aug1, sents_u_aug2 = map(move_to_cuda, [sents_u, sents_u_aug1, sents_u_aug2])
                         
                         if self.config.method == 'fix_match':
-                            aug_choices = torch.LongTensor([0]*32).cuda()
+                            aug_choices = torch.LongTensor([0]*32).to('cuda' if torch.cuda.is_available() else 'cpu')
                         else:    
                             aug_choices = self._model(sents_u, 'aux').argmax(dim=-1).detach()    # (n, 1)
                         preds1, preds2 = self._model(sents_u_aug1), self._model(sents_u_aug2)   # (n,c), (n,c)
@@ -134,7 +134,7 @@ class BaseTrainer():
         with tqdm(loader_label) as pbar:
             for (sents_l, _, _, labels) in pbar:
                 sents_l = move_to_cuda(sents_l)
-                labels = labels.cuda()
+                labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
                 if self.config.dataset == 'imdb':
                     labels = labels + 1
                 
@@ -154,7 +154,7 @@ class BaseTrainer():
         with tqdm(loader) as pbar:
             for (sents, _, _, labels) in pbar:
                 sents = move_to_cuda(sents)
-                labels = labels.cuda()
+                labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
 
                 if self.config.dataset == 'imdb':
                     labels = labels + 1
@@ -261,14 +261,14 @@ class ClfTrainer(BaseTrainer):
             for batch_label in pbar:
                 sents_l, sents_l_aug1, sents_l_aug2, labels = batch_label
                 sents_l, sents_l_aug1, sents_l_aug2 = map(move_to_cuda, [sents_l, sents_l_aug1, sents_l_aug2])
-                labels = labels.cuda()
+                labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
 
                 if self.config.dataset == 'imdb':
                     labels = labels + 1
                 # step1: run and compare the outputs from two augmentations of the same labeled input
                 preds1, _ = self._model(sents_l_aug1)  # (n, c)
                 preds2, _ = self._model(sents_l_aug2)  # (n, c)
-                aug_choice = compare_and_gen_augchoicemask(preds1, preds2, labels, metric=self.config.aux_metric).cuda()
+                aug_choice = compare_and_gen_augchoicemask(preds1, preds2, labels, metric=self.config.aux_metric).to('cuda' if torch.cuda.is_available() else 'cpu')
                 
                 # step2: tune the auxiliary network using labeled inputs
                 raw_preds, raw_hiddens = self._model(sents_l, return_hidden=True)
@@ -299,7 +299,7 @@ class ClfTrainer(BaseTrainer):
                         sents_u, sents_u_aug1, sents_u_aug2 = map(move_to_cuda, [sents_u, sents_u_aug1, sents_u_aug2])
                         
                         if self.config.method == 'fix_match':
-                            aug_choices = torch.LongTensor([0]*32).cuda()
+                            aug_choices = torch.LongTensor([0]*32).to('cuda' if torch.cuda.is_available() else 'cpu')
                         else:
                             _, hidden_u = self._model(sents_u, return_hidden=True)    
                             aug_choices = self._classifier(hidden_u.detach()).argmax(dim=-1).detach()
@@ -341,7 +341,7 @@ class ClfTrainer(BaseTrainer):
         with tqdm(loader) as pbar:
             for (sents, _, _, labels) in pbar:
                 sents = move_to_cuda(sents)
-                labels = labels.cuda()
+                labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
 
                 if self.config.dataset == 'imdb':
                     labels = labels + 1
@@ -419,7 +419,7 @@ class SimTrainer(BaseTrainer):
             for batch_label in pbar:
                 sents_l, sents_l_aug1, sents_l_aug2, labels = batch_label
                 sents_l, sents_l_aug1, sents_l_aug2 = map(move_to_cuda, [sents_l, sents_l_aug1, sents_l_aug2])
-                labels = labels.cuda()
+                labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
 
                 if self.config.dataset == 'imdb':
                     labels = labels + 1
@@ -473,7 +473,7 @@ class SimTrainer(BaseTrainer):
                         aug1_score, aug2_score = self._scorer(hidden_u, hidden1), self._scorer(hidden_u, hidden2)
                         
                         if self.config.method == 'fix_match':
-                            aug_choices = torch.LongTensor([0]*hidden1.size(0)).cuda()
+                            aug_choices = torch.LongTensor([0]*hidden1.size(0)).to('cuda' if torch.cuda.is_available() else 'cpu')
                         else:
                             aug_choices = torch.argmax(torch.cat([aug1_score, aug2_score], dim=-1), dim=-1)
                         
@@ -505,7 +505,7 @@ class SimTrainer(BaseTrainer):
         with tqdm(loader_label) as pbar:
             for (sents_l, _, _, labels) in pbar:
                 sents_l = move_to_cuda(sents_l)
-                labels = labels.cuda()
+                labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
 
                 if self.config.dataset == 'imdb':
                     labels = labels + 1
@@ -526,7 +526,7 @@ class SimTrainer(BaseTrainer):
         with tqdm(loader) as pbar:
             for (sents, _, _, labels) in pbar:
                 sents = move_to_cuda(sents)
-                labels = labels.cuda()
+                labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
 
                 if self.config.dataset == 'imdb':
                     labels = labels + 1
