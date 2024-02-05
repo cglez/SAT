@@ -63,10 +63,7 @@ def main():
         'dev_loader': dev_loader, 
         'test_loader': test_loader
     }
-    if config.dataset == 'imdb':
-        config.num_classes = 2
-    else:
-        config.num_classes = num_class
+    config.num_classes = num_class
     set_seed(config)
     
     if config.aug_metric == 'base':

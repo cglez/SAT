@@ -64,8 +64,6 @@ class BaseTrainer():
                 sents_l, sents_l_aug1, sents_l_aug2 = map(move_to_cuda, [sents_l, sents_l_aug1, sents_l_aug2])
                 labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
 
-                if self.config.dataset == 'imdb':
-                    labels = labels + 1
                 # step1: run and compare the outputs from two augmentations of the same labeled input
                 preds1 = self._model(sents_l_aug1)  # (n, c)
                 preds2 = self._model(sents_l_aug2)  # (n, c)
@@ -135,9 +133,7 @@ class BaseTrainer():
             for (sents_l, _, _, labels) in pbar:
                 sents_l = move_to_cuda(sents_l)
                 labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
-                if self.config.dataset == 'imdb':
-                    labels = labels + 1
-                
+
                 raw_preds = self._model(sents_l)
                 loss = self._criterion(raw_preds, labels)
 
@@ -156,8 +152,6 @@ class BaseTrainer():
                 sents = move_to_cuda(sents)
                 labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
 
-                if self.config.dataset == 'imdb':
-                    labels = labels + 1
                 with torch.no_grad():
                     preds = self._model(sents)
                     all_preds.append(preds.argmax(-1))
@@ -263,8 +257,6 @@ class ClfTrainer(BaseTrainer):
                 sents_l, sents_l_aug1, sents_l_aug2 = map(move_to_cuda, [sents_l, sents_l_aug1, sents_l_aug2])
                 labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
 
-                if self.config.dataset == 'imdb':
-                    labels = labels + 1
                 # step1: run and compare the outputs from two augmentations of the same labeled input
                 preds1, _ = self._model(sents_l_aug1)  # (n, c)
                 preds2, _ = self._model(sents_l_aug2)  # (n, c)
@@ -343,8 +335,6 @@ class ClfTrainer(BaseTrainer):
                 sents = move_to_cuda(sents)
                 labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
 
-                if self.config.dataset == 'imdb':
-                    labels = labels + 1
                 with torch.no_grad():
                     preds, _ = self._model(sents)
                     all_preds.append(preds.argmax(-1))
@@ -421,8 +411,6 @@ class SimTrainer(BaseTrainer):
                 sents_l, sents_l_aug1, sents_l_aug2 = map(move_to_cuda, [sents_l, sents_l_aug1, sents_l_aug2])
                 labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
 
-                if self.config.dataset == 'imdb':
-                    labels = labels + 1
                 # step1: run and compare the outputs from two augmentations of the same labeled input
                 raw_preds, hidden_raw = self._model(sents_l, return_hidden=True)
                 preds1, hidden1 = self._model(sents_l_aug1, return_hidden=True)  # (n, c)
@@ -507,9 +495,6 @@ class SimTrainer(BaseTrainer):
                 sents_l = move_to_cuda(sents_l)
                 labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
 
-                if self.config.dataset == 'imdb':
-                    labels = labels + 1
-                
                 raw_preds, _ = self._model(sents_l)
                 loss = self._criterion(raw_preds, labels)
 
@@ -528,8 +513,6 @@ class SimTrainer(BaseTrainer):
                 sents = move_to_cuda(sents)
                 labels = labels.to('cuda' if torch.cuda.is_available() else 'cpu')
 
-                if self.config.dataset == 'imdb':
-                    labels = labels + 1
                 with torch.no_grad():
                     preds, _ = self._model(sents)
                     all_preds.append(preds.argmax(-1))
