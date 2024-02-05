@@ -432,7 +432,7 @@ class SimTrainer(BaseTrainer):
                 hidden_raw, hidden1, hidden2 = hidden_raw.detach(), hidden1.detach(), hidden2.detach()
                 # step2: tune the auxiliary network using labeled inputs
                 aug_choice_preds_scores = torch.cat([self._scorer(hidden_raw, hidden1), self._scorer(hidden_raw, hidden2)], dim=-1)   # (n, 2)
-                bs = aug_choice_preds_scores.size(0)
+                bs = aug_choice_preds_scores.shape[0]
                 pos = aug_choice_preds_scores[torch.arange(bs), aug_true_choices]
                 neg = aug_choice_preds_scores[torch.arange(bs), 1-aug_true_choices]
                 self._scorer.zero_grad()

@@ -54,7 +54,7 @@ class MyCollator(object):
                 labels.append(sample[3])
     
         tokenized = self.tokenizer(sents, padding=True, truncation='longest_first', max_length=self.max_length, return_tensors='pt')
-        labels = torch.LongTensor(labels) - 1
+        labels = torch.LongTensor(labels)
         if sents_aug1 is not None:
             tokenized_aug1 = self.tokenizer(sents_aug1, padding=True, truncation='longest_first', max_length=self.max_length, return_tensors='pt')
         else:
@@ -107,5 +107,5 @@ def get_dataloader(data_path, labeled_size=200, mu=4, batch_size=32, max_length=
     dev_loader = DataLoader(dataset=dev_dataset, batch_size=64, shuffle=False, collate_fn=collator)
     test_loader = DataLoader(dataset=test_dataset, batch_size=64, shuffle=False, collate_fn=collator)
     
-    num_class = max(train_l_df['label'].to_list())
+    num_class = max(train_l_df['label'].to_list()) + 1
     return train_loader_l, train_loader_u, dev_loader, test_loader, num_class
