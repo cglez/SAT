@@ -41,7 +41,7 @@ def main():
     parser.add_argument('--thr', type=float, default=0.9, help='the threshold chosen to filter "truths" of low probabilities')
     parser.add_argument('--mu', type=int, default=4, help='the batchsize ratio between unlabeled set and labeled set')
     parser.add_argument('--lbd', type=float, default=0.1, help='the coefficient that controls the strength of the backpropagation of unlabled loss')
-    parser.add_argument('--patience', type=int, default=5, help='patience in the training process')
+    parser.add_argument('--patience', type=int, default=0, help='patience in the training process')
     parser.add_argument('--aux_metric', type=str, default='CE', help='the metric for strength comparison of two augmentation predictions (default: cross entropy)')
     parser.add_argument('--method', type=str, default='aaa', help='the metric for strength comparison of two augmentation predictions (default: cross entropy)')
     parser.add_argument('--lr_main', type=float, default=1e-3, help='learning rate for the main task')
@@ -49,6 +49,7 @@ def main():
     parser.add_argument('--lr_aux', type=float, default=1e-4, help='learning rate for the auxiliary task')
     
     config = parser.parse_args()
+    config.patience = config.patience or config.num_epoch
     
     train_loader_l, train_loader_u, dev_loader, test_loader, num_class = get_dataloader(
         data_path=os.path.join('data', config.dataset),
