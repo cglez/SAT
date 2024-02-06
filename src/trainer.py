@@ -7,6 +7,7 @@ from utils import compare_and_gen_augchoicemask, move_to_cuda, AverageMeter
 from tqdm import tqdm
 from sklearn.metrics import f1_score, accuracy_score, precision_recall_curve, auc
 import numpy as np
+from timeit import default_timer as timer
 import logging
 
 class BaseTrainer():
@@ -485,7 +486,7 @@ class SimTrainer(BaseTrainer):
                 # After obtaining all logits we step once
                 self._main_optimizer.step()
                 
-                pbar.set_description('Training epoch {:2d}: loss_labeled: {:.3f}, loss_aug: {:.3f}, loss_aug_choice: {:3f}'.format(epoch+1, loss_raw, total_loss_aug, loss_aug_choice))
+                pbar.set_description(f'Training epoch {epoch+1:2d}: loss_labeled: {loss_raw:.3f}, loss_aug: {total_loss_aug:.3f}, loss_aug_choice: {loss_aug_choice:3f}')
 
     def train_base(self, loader_label, loader_unlabel, epoch):
         self.losses.reset()
@@ -530,6 +531,7 @@ class SimTrainer(BaseTrainer):
         return f1_macro, acc, auc_1
   
     def run(self):
+        t0 = timer()
         test_scores = {'acc': [], 'f1_macro': [], 'auc_1': []}
         best_dev_score = 0.0
         patience = self.patience
@@ -557,6 +559,7 @@ class SimTrainer(BaseTrainer):
                 if patience == 0 or epoch == self.config.num_epoch - 1:
                     self.logger.info('No patience.')
                     break
+        test_scores['runtime'] = timer() - t0
         self.logger.info(
             f'NUM_LABELED={self.config.num_labeled}, SEED={self.config.seed}: aug={self.config.aug_metric},'
             f' lr={self.config.lr_main}, lr_bert={self.config.lr_bert}, thr={self.config.thr}, lbd={self.config.lbd},'
@@ -567,5 +570,6 @@ class SimTrainer(BaseTrainer):
                 f'NUM_LABELED={self.config.num_labeled} SEED={self.config.seed}: aug={self.config.aug_metric},'
                 f' lr={self.config.lr_main}, lr_bert={self.config.lr_bert}, thr={self.config.thr},'
                 f' lbd={self.config.lbd}, mu={self.config.mu}: acc={test_scores["acc"][-1]},'
-                f' macro_f1={test_scores["f1_macro"][-1]}, auc_1={test_scores["auc_1"][-1]}\n'
+                f' macro_f1={test_scores["f1_macro"][-1]}, auc_1={test_scores["auc_1"][-1]},'
+                f' runtime={test_scores["runtime"]}\n'
             )
