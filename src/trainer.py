@@ -1,3 +1,5 @@
+import sys
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -528,6 +530,9 @@ class SimTrainer(BaseTrainer):
         acc = accuracy_score(all_labels, all_preds)
         precisions_1, recalls_1, _ = precision_recall_curve(y_true=all_labels, probas_pred=all_probs[:, 1], pos_label=1)
         auc_1 = auc(recalls_1, precisions_1)
+        if np.isnan(auc_1):
+            print(f'AUC_1 is NaN\n  labels: {all_labels}\n  probs_1: {all_probs[:, 1]}', file=sys.stderr)
+            auc_1 = 0.0
         return f1_macro, acc, auc_1
   
     def run(self):
@@ -559,6 +564,7 @@ class SimTrainer(BaseTrainer):
                 if patience == 0 or epoch == self.config.num_epoch - 1:
                     self.logger.info('No patience.')
                     break
+        test_scores = {k: (v or [0.0]) for k, v in test_scores.items()}
         test_scores['runtime'] = timer() - t0
         self.logger.info(
             f'NUM_LABELED={self.config.num_labeled}, SEED={self.config.seed}: aug={self.config.aug_metric},'
