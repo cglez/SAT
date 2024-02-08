@@ -529,10 +529,7 @@ class SimTrainer(BaseTrainer):
         f1_macro = f1_score(all_labels, all_preds, average='macro')
         acc = accuracy_score(all_labels, all_preds)
         precisions_1, recalls_1, _ = precision_recall_curve(y_true=all_labels, probas_pred=all_probs[:, 1], pos_label=1)
-        auc_1 = auc(recalls_1, precisions_1)
-        if np.isnan(auc_1):
-            print(f'AUC_1 is NaN\n  labels: {all_labels}\n  probs_1: {all_probs[:, 1]}', file=sys.stderr)
-            auc_1 = 0.0
+        auc_1 = auc(recalls_1, precisions_1) or 0.0
         return f1_macro, acc, auc_1
   
     def run(self):
